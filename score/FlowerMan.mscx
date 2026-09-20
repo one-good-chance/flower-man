@@ -763,7 +763,6 @@
           <KeySig>
             <eid>E21lmjHMuvE_aq0LujsgcME</eid>
             <concertKey>0</concertKey>
-            <actualKey>2</actualKey>
             </KeySig>
           <TimeSig>
             <eid>Qs48cWGPllJ_Cp5xILieUJK</eid>
@@ -1063,7 +1062,6 @@
           <KeySig>
             <eid>6kQjqSm7T4G_15JgmjS/B5O</eid>
             <concertKey>0</concertKey>
-            <actualKey>2</actualKey>
             </KeySig>
           <TimeSig>
             <eid>QKxVTGtTejP_0k7zufHCwmJ</eid>
@@ -1363,7 +1361,6 @@
           <KeySig>
             <eid>ziy6KucdNxO_IGtN9Hzf/aP</eid>
             <concertKey>0</concertKey>
-            <actualKey>2</actualKey>
             </KeySig>
           <TimeSig>
             <eid>8fiRH7lR3sK_1NKL6GCBTgO</eid>
@@ -1663,7 +1660,6 @@
           <KeySig>
             <eid>VV0zaKE+EfD_s/da7gPpc2P</eid>
             <concertKey>0</concertKey>
-            <actualKey>3</actualKey>
             </KeySig>
           <TimeSig>
             <eid>2PAbLBeg8tE_KFOJBrv/bjD</eid>

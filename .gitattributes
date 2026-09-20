@@ -1,0 +1,3 @@
+score/*.mscx filter=musescore-pitch
+score/score_style.mss filter=musescore-pitch
+*.sh text eol=lf
