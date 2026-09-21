@@ -1,0 +1,7 @@
+# Generated MuseScore artifacts
+*.mscz
+*.pdf
+
+# Local build directories
+build/
+dist/

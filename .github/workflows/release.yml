@@ -1,0 +1,151 @@
+name: Build and release score
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Determine release tag and score name
+        id: metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mapfile -t scores < <(find score -maxdepth 1 -type f -name '*.mscx' -print)
+          if (( ${#scores[@]} != 1 )); then
+            echo "Expected exactly one .mscx file directly inside score/; found ${#scores[@]}." >&2
+            exit 1
+          fi
+
+          score_name=$(basename "${scores[0]}" .mscx)
+          {
+            echo "tag=$GITHUB_REF_NAME"
+            echo "score_name=$score_name"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Package MSCZ
+        shell: bash
+        env:
+          SCORE_NAME: ${{ steps.metadata.outputs.score_name }}
+        run: |
+          set -euo pipefail
+          release_dir="$RUNNER_TEMP/release"
+          mkdir -p "$release_dir"
+
+          (
+            cd score
+            zip -qr "$release_dir/$SCORE_NAME.mscz" .
+          )
+
+          test -s "$release_dir/$SCORE_NAME.mscz"
+
+      - name: Download MuseScore Studio
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          musescore_dir="$RUNNER_TEMP/musescore"
+          mkdir -p "$musescore_dir"
+
+          gh release download \
+            --repo musescore/MuseScore \
+            --pattern '*x86_64.AppImage' \
+            --dir "$musescore_dir"
+
+          mapfile -t appimages < <(find "$musescore_dir" -maxdepth 1 -type f -name '*.AppImage' -print)
+          if (( ${#appimages[@]} != 1 )); then
+            echo "Expected exactly one MuseScore AppImage; found ${#appimages[@]}." >&2
+            exit 1
+          fi
+
+          chmod +x "${appimages[0]}"
+          (
+            cd "$musescore_dir"
+            "${appimages[0]}" --appimage-extract >/dev/null
+          )
+
+      - name: Install MuseScore runtime libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes \
+            libegl1 \
+            libjack-jackd2-0 \
+            libnss3 \
+            libopengl0 \
+            libxcb-cursor0 \
+            xauth \
+            xvfb
+
+      - name: Export conductor PDF
+        shell: bash
+        env:
+          SCORE_NAME: ${{ steps.metadata.outputs.score_name }}
+        run: |
+          set -euo pipefail
+          musescore="$RUNNER_TEMP/musescore/squashfs-root/AppRun"
+          score="$RUNNER_TEMP/release/$SCORE_NAME.mscz"
+          output="$RUNNER_TEMP/release/$SCORE_NAME - Conductor.pdf"
+
+          xvfb-run --auto-servernum "$musescore" --export-to "$output" "$score"
+          test -s "$output"
+
+      - name: Export part PDFs
+        shell: bash
+        env:
+          SCORE_NAME: ${{ steps.metadata.outputs.score_name }}
+        run: |
+          set -euo pipefail
+          musescore="$RUNNER_TEMP/musescore/squashfs-root/AppRun"
+          score="$RUNNER_TEMP/release/$SCORE_NAME.mscz"
+          parts_json="$RUNNER_TEMP/parts.json"
+
+          xvfb-run --auto-servernum \
+            "$musescore" --score-parts-pdf "$score" > "$parts_json"
+          jq -e '
+            (.parts | type == "array") and
+            (.partsBin | type == "array") and
+            (.parts | length == (.partsBin | length))
+          ' "$parts_json" >/dev/null
+
+          part_count=$(jq '.parts | length' "$parts_json")
+          echo "Exporting $part_count parts"
+
+          for ((i = 0; i < part_count; i++)); do
+            part_name=$(jq -r ".parts[$i]" "$parts_json")
+            safe_name=$(printf '%s' "$part_name" | sed 's#[/\\:*?"<>|]#-#g')
+            output="$RUNNER_TEMP/release/$SCORE_NAME - $safe_name.pdf"
+
+            jq -er ".partsBin[$i]" "$parts_json" \
+              | base64 --decode > "$output"
+            test -s "$output"
+          done
+
+      - name: List release assets
+        shell: bash
+        run: ls -lh "$RUNNER_TEMP/release"
+
+      - name: Create GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.metadata.outputs.tag }}
+          SCORE_NAME: ${{ steps.metadata.outputs.score_name }}
+        run: |
+          set -euo pipefail
+          gh release create "$RELEASE_TAG" \
+            "$RUNNER_TEMP/release/"* \
+            --title "$SCORE_NAME $RELEASE_TAG" \
+            --generate-notes \
+            --verify-tag
