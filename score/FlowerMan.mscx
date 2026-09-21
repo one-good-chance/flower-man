@@ -444,6 +444,12 @@
             <sigN>4</sigN>
             <sigD>4</sigD>
             </TimeSig>
+          <Tempo>
+            <tempo>2.666667</tempo>
+            <followText>1</followText>
+            <eid>r24w8vAYveG_2xzpaKEahsK</eid>
+            <text><sym>metNoteQuarterUp</sym><font face="Edwin"/> = 160</text>
+            </Tempo>
           <Rest>
             <eid>2bZrha+sjzP_+1x7wRNwLRG</eid>
             <durationType>measure</durationType>
@@ -2869,7 +2875,7 @@
             <sigD>4</sigD>
             </TimeSig>
           <Rest>
-            <eid>0ZKN40AJ1kI_exf2HV7KS5G</eid>
+            <eid>4Sy+AB5+x+B_qmUxmMqc4YF</eid>
             <durationType>measure</durationType>
             <duration>4/4</duration>
             </Rest>
