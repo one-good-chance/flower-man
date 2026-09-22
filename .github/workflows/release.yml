@@ -1,4 +1,4 @@
-name: Build and release score
+nname: Build and release score
 
 on:
   push:
@@ -91,6 +91,7 @@ jobs:
             libjack-jackd2-0 \
             libnss3 \
             libopengl0 \
+            libpipewire-0.3-0 \
             libxcb-cursor0 \
             xauth \
             xvfb
@@ -114,12 +115,63 @@ jobs:
           SCORE_NAME: ${{ steps.metadata.outputs.score_name }}
         run: |
           set -euo pipefail
+
           musescore="$RUNNER_TEMP/musescore/squashfs-root/AppRun"
           score="$RUNNER_TEMP/release/$SCORE_NAME.mscz"
+          raw_json="$RUNNER_TEMP/parts.raw"
           parts_json="$RUNNER_TEMP/parts.json"
+          parts_stderr="$RUNNER_TEMP/parts.stderr"
 
+          # MuseScore can write diagnostic text to stdout together with the
+          # JSON response. Capture the complete output and extract the JSON
+          # value before passing it to jq.
           xvfb-run --auto-servernum \
-            "$musescore" --score-parts-pdf "$score" > "$parts_json"
+            "$musescore" --score-parts-pdf "$score" >"$raw_json" 2>"$parts_stderr"
+
+          python3 - "$raw_json" "$parts_json" <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          source = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
+          decoder = json.JSONDecoder()
+
+          value = None
+          for index, character in enumerate(source):
+              if character not in "[{":
+                  continue
+
+              try:
+                  candidate, _ = decoder.raw_decode(source[index:])
+              except json.JSONDecodeError:
+                  continue
+
+              value = candidate
+              break
+
+          if value is None:
+              raise SystemExit("MuseScore did not emit valid JSON")
+
+          # Some MuseScore versions wrap the response object in a
+          # single-element array.
+          if isinstance(value, list):
+              if len(value) != 1:
+                  raise SystemExit(
+                      f"Unexpected MuseScore response array length: {len(value)}"
+                  )
+              value = value[0]
+
+          if not isinstance(value, dict):
+              raise SystemExit(
+                  f"Unexpected MuseScore response type: {type(value).__name__}"
+              )
+
+          pathlib.Path(sys.argv[2]).write_text(
+              json.dumps(value),
+              encoding="utf-8",
+          )
+          PY
+
           jq -e '
             (.parts | type == "array") and
             (.partsBin | type == "array") and
@@ -136,6 +188,7 @@ jobs:
 
             jq -er ".partsBin[$i]" "$parts_json" \
               | base64 --decode > "$output"
+
             test -s "$output"
           done
 
