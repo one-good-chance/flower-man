@@ -139,6 +139,18 @@ jobs:
             test -s "$output"
           done
 
+      - name: Export audio file
+        shell: bash
+        env:
+          SCORE_NAME: ${{ steps.metadata.outputs.score_name }}
+        run: |
+          set -euo pipefail
+          musescore="$RUNNER_TEMP/musescore/squashfs-root/AppRun"
+          score="$RUNNER_TEMP/release/$SCORE_NAME.mscz"
+          output="$RUNNER_TEMP/release/$SCORE_NAME.mp3"
+
+          xvfb-run --auto-servernum "$musescore" --export-to "$output" "$score"
+
       - name: List release assets
         shell: bash
         run: ls -lh "$RUNNER_TEMP/release"
