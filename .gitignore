@@ -5,3 +5,7 @@
 # Local build directories
 build/
 dist/
+
+# User-specific setting files
+score/audiosettings.json
+score/viewsettings.json
