@@ -1,9 +1,10 @@
-nname: Build and release score
+name: Build and release score
 
 on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: write
