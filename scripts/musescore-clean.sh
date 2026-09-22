@@ -14,7 +14,7 @@ case "$pathname" in
     sed 's#<concertPitch>[01]</concertPitch>#<concertPitch>0</concertPitch>#g'
     ;;
   *.mscx)
-    sed '/<actualKey>.*<\/actualKey>/d'
+    sed '/<actualKey>.*<\/actualKey>/d; /<layoutMode>.*<\/layoutMode>/d'
     ;;
   *)
     cat
